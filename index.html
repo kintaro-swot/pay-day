@@ -34,13 +34,12 @@
 </head>
 <body class="text-finText min-h-screen font-sans antialiased p-4 flex flex-col items-center">
 
-  <!-- INITIAL SETUP SCREEN -->
   <div id="initialScreen" class="max-w-md w-full mt-20 bg-finSurface backdrop-blur-md border-2 border-finBorder rounded-xl p-6 shadow-lg hidden">
     <h1 class="text-xl font-bold mb-6 text-center tracking-wide">Setup Work Tracker</h1>
     <div class="mb-6 pb-6 border-b border-finBorder">
       <label class="block text-sm font-bold text-finMuted uppercase mb-2">Set Base Hour Pay (₹)</label>
       <div class="flex gap-2">
-        <input type="text" id="initPayInput" value="120" placeholder="e.g. 120" class="flex-1 border-2 border-finBorder bg-white/80 rounded-lg p-2.5 text-sm font-bold focus:outline-none">
+        <input type="text" id="initPayInput" value="120" placeholder="e.g. 105.5" class="flex-1 border-2 border-finBorder bg-white/80 rounded-lg p-2.5 text-sm font-bold focus:outline-none">
         <button id="startFreshBtn" class="bg-finBorder text-white font-bold px-5 rounded-lg text-sm hover:bg-emerald-900 transition">Start</button>
       </div>
     </div>
@@ -50,40 +49,33 @@
     </div>
   </div>
 
-  <!-- MAIN APP CONTAINER -->
   <div id="mainApp" class="w-full max-w-md hidden space-y-6">
     
-    <!-- Top Component: Changeable Hour Pay -->
     <div class="flex justify-start">
       <div id="hourPayWrapper" class="bg-finSurface backdrop-blur-md border-2 border-finBorder rounded-md px-4 py-2 flex items-center gap-1 cursor-pointer hover:bg-white/90 transition shadow-sm" onclick="enableHourPayEdit()">
         <span class="font-black text-lg">₹</span>
         <span id="hourPayDisplay" class="font-black text-lg">120</span>
-        <input type="text" id="hourPayEditInput" class="hidden font-black text-lg bg-transparent w-20 focus:outline-none" onblur="disableHourPayEdit()">
+        <input type="text" id="hourPayEditInput" class="hidden font-black text-lg bg-transparent w-24 focus:outline-none" onblur="disableHourPayEdit()">
       </div>
     </div>
 
-    <!-- Main Entry Creator Block -->
     <form id="entryForm" class="grid grid-cols-4 gap-3 bg-transparent">
       <div class="col-span-3 space-y-3">
-        <!-- Date Block -->
         <div>
           <input type="date" id="entryDate" required class="w-full border-2 border-finBorder rounded-lg p-2 font-bold text-sm bg-finSurface backdrop-blur-md uppercase text-center tracking-wider focus:bg-white transition">
         </div>
         
-        <!-- In Time Block -->
         <div class="flex items-center justify-between gap-2">
           <label class="font-bold text-sm whitespace-nowrap bg-finSurface backdrop-blur-sm px-2 py-1 rounded border border-emerald-200 shadow-sm">In Time</label>
           <input type="time" id="inTime" required class="w-2/3 border-2 border-finBorder rounded-md p-2 font-bold text-sm bg-finSurface backdrop-blur-md text-center focus:bg-white transition">
         </div>
 
-        <!-- Out Time Block -->
         <div class="flex items-center justify-between gap-2">
           <label class="font-bold text-sm whitespace-nowrap bg-finSurface backdrop-blur-sm px-2 py-1 rounded border border-emerald-200 shadow-sm">Out Time</label>
           <input type="time" id="outTime" required class="w-2/3 border-2 border-finBorder rounded-md p-2 font-bold text-sm bg-finSurface backdrop-blur-md text-center focus:bg-white transition">
         </div>
       </div>
 
-      <!-- Save Button Column layout -->
       <div class="col-span-1 flex">
         <button type="submit" class="w-full border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white rounded-xl flex flex-col items-center justify-center font-black text-lg tracking-widest gap-2 py-4 transition shadow-md active:scale-[0.97]">
           <span>S</span><span>A</span><span>V</span><span>E</span>
@@ -91,7 +83,6 @@
       </div>
     </form>
 
-    <!-- Calculated Total Output Box -->
     <div class="flex items-center justify-between gap-4 pt-2">
       <label class="font-black text-lg tracking-wide bg-finSurface backdrop-blur-sm px-3 py-1.5 rounded-lg border border-emerald-200 shadow-sm">Total Earnings</label>
       <div class="w-2/3 border-2 border-finBorder bg-finSurface backdrop-blur-md rounded-lg p-3 font-black text-xl text-center min-h-[52px] shadow-md" id="calculatedTotalDisplay">
@@ -99,7 +90,6 @@
       </div>
     </div>
 
-    <!-- Divider Header Component -->
     <div class="flex justify-between items-center pt-4 border-t-2 border-finBorder">
       <h2 class="font-black text-lg tracking-wide bg-finSurface backdrop-blur-sm px-3 py-1 rounded-lg border border-emerald-200 shadow-sm">All entries</h2>
       <button id="downloadBtn" class="border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white font-bold text-sm py-1.5 px-6 rounded-md transition shadow-sm">
@@ -107,13 +97,11 @@
       </button>
     </div>
 
-    <!-- Dynamic Entry Logs Wrapper -->
     <div id="logsContainer" class="space-y-3"></div>
     <div id="emptyState" class="text-center py-6 bg-finSurface backdrop-blur-sm rounded-xl border-2 border-dashed border-finBorder font-bold text-sm hidden">
       No log entries found.
     </div>
 
-    <!-- Hidden layout tracking utilities -->
     <div class="text-center pt-4">
       <button id="createNewBtn" class="text-xs font-bold bg-white/60 backdrop-blur-sm border border-finBorder px-3 py-1 rounded-full text-finMuted hover:text-finDanger transition shadow-sm">Wipe & Reset Application</button>
     </div>
@@ -147,13 +135,28 @@
     const downloadBtn = document.getElementById('downloadBtn');
     const createNewBtn = document.getElementById('createNewBtn');
 
+    // Updated input formatter to support decimals cleanly while typing
     function formatIndianCurrency(numStr) {
-      let clean = numStr.replace(/\D/g, '');
-      if (!clean) return '';
-      let lastThree = clean.substring(clean.length - 3);
-      let otherBits = clean.substring(0, clean.length - 3);
+      // Filter out everything except digits and single decimal point
+      let clean = numStr.replace(/[^0-9.]/g, '');
+      
+      // Prevent multiple decimals
+      let parts = clean.split('.');
+      if (parts.length > 2) {
+        clean = parts[0] + '.' + parts.slice(1).join('');
+        parts = clean.split('.');
+      }
+      
+      let wholeNumber = parts[0];
+      let decimalPart = parts[1] !== undefined ? '.' + parts[1] : '';
+
+      if (!wholeNumber) return decimalPart ? '0' + decimalPart : '';
+
+      let lastThree = wholeNumber.substring(wholeNumber.length - 3);
+      let otherBits = wholeNumber.substring(0, wholeNumber.length - 3);
       if (otherBits != '') lastThree = ',' + lastThree;
-      return otherBits.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+      
+      return otherBits.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree + decimalPart;
     }
 
     function parseFormattedNumber(str) {
@@ -215,7 +218,7 @@
     window.enableHourPayEdit = function() {
       hourPayDisplay.classList.add('hidden');
       hourPayEditInput.classList.remove('hidden');
-      hourPayEditInput.value = hourPayDisplay.textContent;
+      hourPayEditInput.value = appData.hourPay.toString(); // Use raw number to preserve exact decimals in edit field
       hourPayEditInput.focus();
     };
 
@@ -268,11 +271,8 @@
         endTime.setDate(endTime.getDate() + 1);
       }
       
-      // Calculate total work hours
       let hours = (endTime - startTime) / (1000 * 60 * 60);
-      
-      // Cut 30 minutes (0.5 hours) for break time
-      hours = hours - 0.5;
+      hours = hours - 0.5; // Cut 30 minutes for break time
       
       return Math.max(0, hours * appData.hourPay);
     }
@@ -289,7 +289,7 @@
         rawDate: entryDate.value,
         inTime: inTime.value,
         outTime: outTime.value,
-        earnings: Math.round(earnings)
+        earnings: Math.round(earnings) // Rounds final calculated day payout to nearest rupee
       };
 
       appData.entries.unshift(newLog);
@@ -326,7 +326,9 @@
     });
 
     function render() {
-      hourPayDisplay.textContent = appData.hourPay.toLocaleString('en-IN');
+      // Displays the decimal correctly (e.g. 105.5 will show as 105.5)
+      hourPayDisplay.textContent = appData.hourPay.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+      
       const totalSum = appData.entries.reduce((sum, ent) => sum + ent.earnings, 0);
       calculatedTotalDisplay.textContent = `₹${totalSum.toLocaleString('en-IN')}`;
 
