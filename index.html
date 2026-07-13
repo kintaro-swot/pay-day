@@ -128,7 +128,25 @@
     window.disableHourPayEdit = function() { const parsedVal = parseFormattedNumber(hourPayEditInput.value); if (parsedVal > 0) { appData.hourPay = parsedVal; saveToStorage(); } hourPayEditInput.classList.add('hidden'); hourPayDisplay.classList.remove('hidden'); render(); };
     hourPayEditInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') hourPayEditInput.blur(); });
     startFreshBtn.addEventListener('click', () => { const p = parseFormattedNumber(initPayInput.value); if (p > 0) { appData.hourPay = p; appData.entries = []; saveToStorage(); showMainUi(); } });
-    fileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(event) { try { const parsed = JSON.parse(event.target.result); if (typeof parsed.hourPay === 'number' && Array.isArray(parsed.entries)) { appData = parsed; saveToStorage(); showMainUi(); } else { alert("Malformed schema object."); } } catch (err) { alert("Parser errors encountered."); } }; reader.readAsText(file); });
+    
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (parsed && typeof parsed.hourPay === 'number' && Array.isArray(parsed.entries)) {
+            appData = parsed;
+            saveToStorage();
+            showMainUi();
+          } else { alert("File content invalid."); }
+        } catch (err) { alert("File read error."); }
+        fileInput.value = ''; // Reset input to allow re-selection
+      };
+      reader.readAsText(file);
+    });
+
     function calculateEarnings(date, start, end) { const startTime = new Date(`${date}T${start}`); let endTime = new Date(`${date}T${end}`); if (endTime < startTime) endTime.setDate(endTime.getDate() + 1); let hours = (endTime - startTime) / (1000 * 60 * 60); hours = hours - 0.5; return Math.max(0, hours * appData.hourPay); }
     entryForm.addEventListener('submit', (e) => { e.preventDefault(); const earnings = calculateEarnings(entryDate.value, inTime.value, outTime.value); const dObj = new Date(entryDate.value); const newLog = { id: crypto.randomUUID(), displayDate: `${String(dObj.getDate()).padStart(2, '0')}/${String(dObj.getMonth() + 1).padStart(2, '0')}/${dObj.getFullYear()}`, rawDate: entryDate.value, inTime: inTime.value, outTime: outTime.value, earnings: Math.round(earnings) }; appData.entries.unshift(newLog); saveToStorage(); entryForm.reset(); applyInputDefaults(); render(); });
     window.markAbsent = function() { const newLog = { id: crypto.randomUUID(), displayDate: entryDate.value.split('-').reverse().join('/'), isAbsent: true, earnings: 0 }; appData.entries.unshift(newLog); saveToStorage(); render(); };
