@@ -50,7 +50,6 @@
   </div>
 
   <div id="mainApp" class="w-full max-w-md hidden space-y-6">
-    
     <div class="flex justify-start">
       <div id="hourPayWrapper" class="bg-finSurface backdrop-blur-md border-2 border-finBorder rounded-md px-4 py-2 flex items-center gap-1 cursor-pointer hover:bg-white/90 transition shadow-sm" onclick="enableHourPayEdit()">
         <span class="font-black text-lg">₹</span>
@@ -64,300 +63,100 @@
         <div>
           <input type="date" id="entryDate" required class="w-full border-2 border-finBorder rounded-lg p-2 font-bold text-sm bg-finSurface backdrop-blur-md uppercase text-center tracking-wider focus:bg-white transition">
         </div>
-        
         <div class="flex items-center justify-between gap-2">
           <label class="font-bold text-sm whitespace-nowrap bg-finSurface backdrop-blur-sm px-2 py-1 rounded border border-emerald-200 shadow-sm">In Time</label>
           <input type="time" id="inTime" required class="w-2/3 border-2 border-finBorder rounded-md p-2 font-bold text-sm bg-finSurface backdrop-blur-md text-center focus:bg-white transition">
         </div>
-
         <div class="flex items-center justify-between gap-2">
           <label class="font-bold text-sm whitespace-nowrap bg-finSurface backdrop-blur-sm px-2 py-1 rounded border border-emerald-200 shadow-sm">Out Time</label>
           <input type="time" id="outTime" required class="w-2/3 border-2 border-finBorder rounded-md p-2 font-bold text-sm bg-finSurface backdrop-blur-md text-center focus:bg-white transition">
         </div>
       </div>
-
       <div class="col-span-1 flex">
         <button type="submit" class="w-full border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white rounded-xl flex flex-col items-center justify-center font-black text-lg tracking-widest gap-2 py-4 transition shadow-md active:scale-[0.97]">
           <span>S</span><span>A</span><span>V</span><span>E</span>
         </button>
       </div>
+      <button type="button" onclick="markAbsent()" class="col-span-4 mt-2 border-2 border-dashed border-finDanger text-finDanger bg-white/50 hover:bg-red-100 rounded-lg font-bold text-sm py-2 transition">
+        Mark as Absent
+      </button>
     </form>
 
     <div class="flex items-center justify-between gap-4 pt-2">
       <label class="font-black text-lg tracking-wide bg-finSurface backdrop-blur-sm px-3 py-1.5 rounded-lg border border-emerald-200 shadow-sm">Total Earnings</label>
-      <div class="w-2/3 border-2 border-finBorder bg-finSurface backdrop-blur-md rounded-lg p-3 font-black text-xl text-center min-h-[52px] shadow-md" id="calculatedTotalDisplay">
-        ₹0
-      </div>
+      <div class="w-2/3 border-2 border-finBorder bg-finSurface backdrop-blur-md rounded-lg p-3 font-black text-xl text-center min-h-[52px] shadow-md" id="calculatedTotalDisplay">₹0</div>
     </div>
 
     <div class="flex justify-between items-center pt-4 border-t-2 border-finBorder">
       <h2 class="font-black text-lg tracking-wide bg-finSurface backdrop-blur-sm px-3 py-1 rounded-lg border border-emerald-200 shadow-sm">All entries</h2>
-      <button id="downloadBtn" class="border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white font-bold text-sm py-1.5 px-6 rounded-md transition shadow-sm">
-        Download
-      </button>
+      <button id="downloadBtn" class="border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white font-bold text-sm py-1.5 px-6 rounded-md transition shadow-sm">Download</button>
     </div>
 
     <div id="logsContainer" class="space-y-3"></div>
-    <div id="emptyState" class="text-center py-6 bg-finSurface backdrop-blur-sm rounded-xl border-2 border-dashed border-finBorder font-bold text-sm hidden">
-      No log entries found.
-    </div>
+    <div id="emptyState" class="text-center py-6 bg-finSurface backdrop-blur-sm rounded-xl border-2 border-dashed border-finBorder font-bold text-sm hidden">No log entries found.</div>
 
     <div class="text-center pt-4">
       <button id="createNewBtn" class="text-xs font-bold bg-white/60 backdrop-blur-sm border border-finBorder px-3 py-1 rounded-full text-finMuted hover:text-finDanger transition shadow-sm">Wipe & Reset Application</button>
     </div>
-
   </div>
 
   <script>
-    let appData = {
-      hourPay: 120,
-      entries: []
-    };
+    let appData = { hourPay: 120, entries: [] };
+    const initialScreen = document.getElementById('initialScreen'), mainApp = document.getElementById('mainApp'), initPayInput = document.getElementById('initPayInput'), startFreshBtn = document.getElementById('startFreshBtn'), fileInput = document.getElementById('fileInput'), hourPayDisplay = document.getElementById('hourPayDisplay'), hourPayEditInput = document.getElementById('hourPayEditInput'), entryForm = document.getElementById('entryForm'), entryDate = document.getElementById('entryDate'), inTime = document.getElementById('inTime'), outTime = document.getElementById('outTime'), calculatedTotalDisplay = document.getElementById('calculatedTotalDisplay'), logsContainer = document.getElementById('logsContainer'), emptyState = document.getElementById('emptyState'), downloadBtn = document.getElementById('downloadBtn'), createNewBtn = document.getElementById('createNewBtn');
 
-    const initialScreen = document.getElementById('initialScreen');
-    const mainApp = document.getElementById('mainApp');
-    const initPayInput = document.getElementById('initPayInput');
-    const startFreshBtn = document.getElementById('startFreshBtn');
-    const fileInput = document.getElementById('fileInput');
-
-    const hourPayDisplay = document.getElementById('hourPayDisplay');
-    const hourPayEditInput = document.getElementById('hourPayEditInput');
-    
-    const entryForm = document.getElementById('entryForm');
-    const entryDate = document.getElementById('entryDate');
-    const inTime = document.getElementById('inTime');
-    const outTime = document.getElementById('outTime');
-    
-    const calculatedTotalDisplay = document.getElementById('calculatedTotalDisplay');
-    const logsContainer = document.getElementById('logsContainer');
-    const emptyState = document.getElementById('emptyState');
-    
-    const downloadBtn = document.getElementById('downloadBtn');
-    const createNewBtn = document.getElementById('createNewBtn');
-
-    // Updated input formatter to support decimals cleanly while typing
     function formatIndianCurrency(numStr) {
-      // Filter out everything except digits and single decimal point
       let clean = numStr.replace(/[^0-9.]/g, '');
-      
-      // Prevent multiple decimals
       let parts = clean.split('.');
-      if (parts.length > 2) {
-        clean = parts[0] + '.' + parts.slice(1).join('');
-        parts = clean.split('.');
-      }
-      
-      let wholeNumber = parts[0];
-      let decimalPart = parts[1] !== undefined ? '.' + parts[1] : '';
-
+      if (parts.length > 2) { clean = parts[0] + '.' + parts.slice(1).join(''); parts = clean.split('.'); }
+      let wholeNumber = parts[0], decimalPart = parts[1] !== undefined ? '.' + parts[1] : '';
       if (!wholeNumber) return decimalPart ? '0' + decimalPart : '';
-
-      let lastThree = wholeNumber.substring(wholeNumber.length - 3);
-      let otherBits = wholeNumber.substring(0, wholeNumber.length - 3);
+      let lastThree = wholeNumber.substring(wholeNumber.length - 3), otherBits = wholeNumber.substring(0, wholeNumber.length - 3);
       if (otherBits != '') lastThree = ',' + lastThree;
-      
       return otherBits.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree + decimalPart;
     }
 
-    function parseFormattedNumber(str) {
-      return parseFloat(str.replace(/,/g, '')) || 0;
-    }
+    function parseFormattedNumber(str) { return parseFloat(str.replace(/,/g, '')) || 0; }
+    function t12(time24) { if (!time24) return ''; let [hrs, mins] = time24.split(':'); hrs = parseInt(hrs); let ampm = hrs >= 12 ? 'PM' : 'AM'; hrs = hrs % 12 || 12; return `${hrs}:${mins} ${ampm}`; }
+    function applyInputDefaults() { const today = new Date(); entryDate.value = today.toISOString().split('T')[0]; inTime.value = "08:30"; outTime.value = "19:00"; }
+    [initPayInput, hourPayEditInput].forEach(el => { el.addEventListener('input', (e) => { let cursor = e.target.selectionStart, oldLen = e.target.value.length; e.target.value = formatIndianCurrency(e.target.value); e.target.setSelectionRange(cursor + (e.target.value.length - oldLen), cursor + (e.target.value.length - oldLen)); }); });
 
-    function t12(time24) {
-      if (!time24) return '';
-      let [hrs, mins] = time24.split(':');
-      hrs = parseInt(hrs);
-      let ampm = hrs >= 12 ? 'PM' : 'AM';
-      hrs = hrs % 12 || 12;
-      return `${hrs}:${mins} ${ampm}`;
-    }
-
-    function applyInputDefaults() {
-      const today = new Date();
-      entryDate.value = today.toISOString().split('T')[0];
-      inTime.value = "08:30";
-      outTime.value = "19:00";
-    }
-
-    [initPayInput, hourPayEditInput].forEach(el => {
-      el.addEventListener('input', (e) => {
-        let cursor = e.target.selectionStart;
-        let oldLen = e.target.value.length;
-        e.target.value = formatIndianCurrency(e.target.value);
-        e.target.setSelectionRange(cursor + (e.target.value.length - oldLen), cursor + (e.target.value.length - oldLen));
-      });
-    });
-
-    function init() {
-      const stored = localStorage.getItem('hourlyWorkTrackerData');
-      if (stored) {
-        appData = JSON.parse(stored);
-        if (!appData.hourPay) appData.hourPay = 120;
-        showMainUi();
-      } else {
-        showInitialUi();
-      }
-    }
-
-    function saveToStorage() {
-      localStorage.setItem('hourlyWorkTrackerData', JSON.stringify(appData));
-    }
-
-    function showInitialUi() {
-      initialScreen.classList.remove('hidden');
-      mainApp.classList.add('hidden');
-    }
-
-    function showMainUi() {
-      initialScreen.classList.add('hidden');
-      mainApp.classList.remove('hidden');
-      applyInputDefaults();
-      render();
-    }
-
-    window.enableHourPayEdit = function() {
-      hourPayDisplay.classList.add('hidden');
-      hourPayEditInput.classList.remove('hidden');
-      hourPayEditInput.value = appData.hourPay.toString(); // Use raw number to preserve exact decimals in edit field
-      hourPayEditInput.focus();
-    };
-
-    window.disableHourPayEdit = function() {
-      const parsedVal = parseFormattedNumber(hourPayEditInput.value);
-      if (parsedVal > 0) {
-        appData.hourPay = parsedVal;
-        saveToStorage();
-      }
-      hourPayEditInput.classList.add('hidden');
-      hourPayDisplay.classList.remove('hidden');
-      render();
-    };
-
-    hourPayEditInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') hourPayEditInput.blur();
-    });
-
-    startFreshBtn.addEventListener('click', () => {
-      const p = parseFormattedNumber(initPayInput.value);
-      if (p > 0) {
-        appData.hourPay = p;
-        appData.entries = [];
-        saveToStorage();
-        showMainUi();
-      }
-    });
-
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        try {
-          const parsed = JSON.parse(event.target.result);
-          if (typeof parsed.hourPay === 'number' && Array.isArray(parsed.entries)) {
-            appData = parsed;
-            saveToStorage();
-            showMainUi();
-          } else { alert("Malformed schema object."); }
-        } catch (err) { alert("Parser errors encountered."); }
-      };
-      reader.readAsText(file);
-    });
-
-    function calculateEarnings(date, start, end) {
-      const startTime = new Date(`${date}T${start}`);
-      let endTime = new Date(`${date}T${end}`);
-      if (endTime < startTime) {
-        endTime.setDate(endTime.getDate() + 1);
-      }
-      
-      let hours = (endTime - startTime) / (1000 * 60 * 60);
-      hours = hours - 0.5; // Cut 30 minutes for break time
-      
-      return Math.max(0, hours * appData.hourPay);
-    }
-
-    entryForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const earnings = calculateEarnings(entryDate.value, inTime.value, outTime.value);
-      const dObj = new Date(entryDate.value);
-      const displayDate = `${String(dObj.getDate()).padStart(2, '0')}/${String(dObj.getMonth() + 1).padStart(2, '0')}/${dObj.getFullYear()}`;
-
-      const newLog = {
-        id: crypto.randomUUID(),
-        displayDate: displayDate,
-        rawDate: entryDate.value,
-        inTime: inTime.value,
-        outTime: outTime.value,
-        earnings: Math.round(earnings) // Rounds final calculated day payout to nearest rupee
-      };
-
-      appData.entries.unshift(newLog);
-      saveToStorage();
-      entryForm.reset();
-      applyInputDefaults();
-      render();
-    });
-
-    window.deleteEntry = function(id) {
-      appData.entries = appData.entries.filter(ent => ent.id !== id);
-      saveToStorage();
-      render();
-    };
-
-    downloadBtn.addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `work_tracker_export_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-
-    createNewBtn.addEventListener('click', () => {
-      if (confirm("Download structural backup before data wipe sequence?")) {
-        downloadBtn.click();
-      }
-      localStorage.removeItem('hourlyWorkTrackerData');
-      showInitialUi();
-    });
-
+    function init() { const stored = localStorage.getItem('hourlyWorkTrackerData'); if (stored) { appData = JSON.parse(stored); if (!appData.hourPay) appData.hourPay = 120; showMainUi(); } else { showInitialUi(); } }
+    function saveToStorage() { localStorage.setItem('hourlyWorkTrackerData', JSON.stringify(appData)); }
+    function showInitialUi() { initialScreen.classList.remove('hidden'); mainApp.classList.add('hidden'); }
+    function showMainUi() { initialScreen.classList.add('hidden'); mainApp.classList.remove('hidden'); applyInputDefaults(); render(); }
+    window.enableHourPayEdit = function() { hourPayDisplay.classList.add('hidden'); hourPayEditInput.classList.remove('hidden'); hourPayEditInput.value = appData.hourPay.toString(); hourPayEditInput.focus(); };
+    window.disableHourPayEdit = function() { const parsedVal = parseFormattedNumber(hourPayEditInput.value); if (parsedVal > 0) { appData.hourPay = parsedVal; saveToStorage(); } hourPayEditInput.classList.add('hidden'); hourPayDisplay.classList.remove('hidden'); render(); };
+    hourPayEditInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') hourPayEditInput.blur(); });
+    startFreshBtn.addEventListener('click', () => { const p = parseFormattedNumber(initPayInput.value); if (p > 0) { appData.hourPay = p; appData.entries = []; saveToStorage(); showMainUi(); } });
+    fileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(event) { try { const parsed = JSON.parse(event.target.result); if (typeof parsed.hourPay === 'number' && Array.isArray(parsed.entries)) { appData = parsed; saveToStorage(); showMainUi(); } else { alert("Malformed schema object."); } } catch (err) { alert("Parser errors encountered."); } }; reader.readAsText(file); });
+    function calculateEarnings(date, start, end) { const startTime = new Date(`${date}T${start}`); let endTime = new Date(`${date}T${end}`); if (endTime < startTime) endTime.setDate(endTime.getDate() + 1); let hours = (endTime - startTime) / (1000 * 60 * 60); hours = hours - 0.5; return Math.max(0, hours * appData.hourPay); }
+    entryForm.addEventListener('submit', (e) => { e.preventDefault(); const earnings = calculateEarnings(entryDate.value, inTime.value, outTime.value); const dObj = new Date(entryDate.value); const newLog = { id: crypto.randomUUID(), displayDate: `${String(dObj.getDate()).padStart(2, '0')}/${String(dObj.getMonth() + 1).padStart(2, '0')}/${dObj.getFullYear()}`, rawDate: entryDate.value, inTime: inTime.value, outTime: outTime.value, earnings: Math.round(earnings) }; appData.entries.unshift(newLog); saveToStorage(); entryForm.reset(); applyInputDefaults(); render(); });
+    window.markAbsent = function() { const newLog = { id: crypto.randomUUID(), displayDate: entryDate.value.split('-').reverse().join('/'), isAbsent: true, earnings: 0 }; appData.entries.unshift(newLog); saveToStorage(); render(); };
+    window.deleteEntry = function(id) { appData.entries = appData.entries.filter(ent => ent.id !== id); saveToStorage(); render(); };
+    downloadBtn.addEventListener('click', () => { const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `work_tracker_export_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); });
+    createNewBtn.addEventListener('click', () => { if (confirm("Download structural backup before data wipe sequence?")) downloadBtn.click(); localStorage.removeItem('hourlyWorkTrackerData'); showInitialUi(); });
     function render() {
-      // Displays the decimal correctly (e.g. 105.5 will show as 105.5)
       hourPayDisplay.textContent = appData.hourPay.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-      
       const totalSum = appData.entries.reduce((sum, ent) => sum + ent.earnings, 0);
       calculatedTotalDisplay.textContent = `₹${totalSum.toLocaleString('en-IN')}`;
-
       logsContainer.innerHTML = '';
-      if (appData.entries.length === 0) {
-        emptyState.classList.remove('hidden');
-        return;
-      }
+      if (appData.entries.length === 0) { emptyState.classList.remove('hidden'); return; }
       emptyState.classList.add('hidden');
-
       appData.entries.forEach(ent => {
         const itemRow = document.createElement('div');
         itemRow.className = "border-2 border-finBorder bg-finSurface backdrop-blur-md rounded-xl p-3 flex justify-between items-center gap-4 transition shadow-md hover:bg-white";
         itemRow.innerHTML = `
           <div class="flex flex-col gap-0.5">
             <span class="font-black text-sm text-finText tracking-wide">${ent.displayDate}</span>
-            <span class="text-xs font-bold text-finMuted">${t12(ent.inTime)} to ${t12(ent.outTime)} (Break deducted)</span>
+            <span class="text-xs font-bold text-finMuted">${ent.isAbsent ? 'ABSENT' : t12(ent.inTime) + ' to ' + t12(ent.outTime) + ' (Break deducted)'}</span>
           </div>
           <div class="flex items-center gap-4">
-            <span class="font-black text-base text-finText">₹${ent.earnings.toLocaleString('en-IN')}</span>
-            <button onclick="deleteEntry('${ent.id}')" class="border-2 border-finBorder bg-white hover:bg-red-50 text-finDanger font-black text-xs py-1 px-3 rounded-md transition tracking-wider">
-              Delete
-            </button>
-          </div>
-        `;
+            <span class="font-black text-base ${ent.isAbsent ? 'text-finDanger' : 'text-finText'}">${ent.isAbsent ? 'Absent' : '₹' + ent.earnings.toLocaleString('en-IN')}</span>
+            <button onclick="deleteEntry('${ent.id}')" class="border-2 border-finBorder bg-white hover:bg-red-50 text-finDanger font-black text-xs py-1 px-3 rounded-md transition tracking-wider">Delete</button>
+          </div>`;
         logsContainer.appendChild(itemRow);
       });
     }
-
     init();
   </script>
 </body>
