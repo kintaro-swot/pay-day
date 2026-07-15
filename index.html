@@ -347,7 +347,7 @@
         alert("Could not delete entry: " + error.message);
         return;
       }
-      appState.entries = appState.entries.filter(ent => ent.id !== id);
+      appState.entries = appState.entries.filter(ent => String(ent.id) !== String(id));
       renderEntries();
     };
 
