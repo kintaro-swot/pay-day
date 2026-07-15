@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Work Hour & Pay Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -34,30 +35,39 @@
 </head>
 <body class="text-finText min-h-screen font-sans antialiased p-4 flex flex-col items-center">
 
-  <div id="initialScreen" class="max-w-md w-full mt-20 bg-finSurface backdrop-blur-md border-2 border-finBorder rounded-xl p-6 shadow-lg hidden">
-    <h1 class="text-xl font-bold mb-6 text-center tracking-wide">Setup Work Tracker</h1>
-    <div class="mb-6 pb-6 border-b border-finBorder">
-      <label class="block text-sm font-bold text-finMuted uppercase mb-2">Set Base Hour Pay (₹)</label>
-      <div class="flex gap-2">
-        <input type="text" id="initPayInput" value="120" placeholder="e.g. 105.5" class="flex-1 border-2 border-finBorder bg-white/80 rounded-lg p-2.5 text-sm font-bold focus:outline-none">
-        <button id="startFreshBtn" class="bg-finBorder text-white font-bold px-5 rounded-lg text-sm hover:bg-emerald-900 transition">Start</button>
+  <!-- AUTH SCREEN -->
+  <div id="authScreen" class="max-w-md w-full mt-20 bg-finSurface backdrop-blur-md border-2 border-finBorder rounded-xl p-6 shadow-lg">
+    <h1 class="text-xl font-bold mb-6 text-center tracking-wide" id="authTitle">Sign In</h1>
+
+    <div class="space-y-3">
+      <div>
+        <label class="block text-sm font-bold text-finMuted uppercase mb-1">Email</label>
+        <input type="email" id="authEmail" class="w-full border-2 border-finBorder bg-white/80 rounded-lg p-2.5 text-sm font-bold focus:outline-none" placeholder="you@example.com">
       </div>
-    </div>
-    <div>
-      <label class="block text-sm font-bold text-finMuted uppercase mb-2">Or Upload Saved File</label>
-      <input type="file" id="fileInput" accept=".json" class="w-full text-sm text-finMuted file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-2 file:border-finBorder file:text-sm file:font-bold file:bg-white/80 file:text-finText hover:file:bg-white cursor-pointer">
+      <div>
+        <label class="block text-sm font-bold text-finMuted uppercase mb-1">Password</label>
+        <input type="password" id="authPassword" class="w-full border-2 border-finBorder bg-white/80 rounded-lg p-2.5 text-sm font-bold focus:outline-none" placeholder="At least 6 characters">
+      </div>
+      <p id="authError" class="text-finDanger text-xs font-bold hidden"></p>
+      <button id="authSubmitBtn" class="w-full bg-finBorder text-white font-bold py-2.5 rounded-lg text-sm hover:bg-emerald-900 transition">Sign In</button>
+      <button id="authToggleBtn" class="w-full text-xs font-bold text-finMuted hover:text-finText transition py-1">Need an account? Sign up instead</button>
     </div>
   </div>
 
+  <!-- MAIN APP CONTAINER -->
   <div id="mainApp" class="w-full max-w-md hidden space-y-6">
-    <div class="flex justify-start">
+
+    <!-- Top bar: Hour Pay + Sign Out -->
+    <div class="flex justify-between items-center">
       <div id="hourPayWrapper" class="bg-finSurface backdrop-blur-md border-2 border-finBorder rounded-md px-4 py-2 flex items-center gap-1 cursor-pointer hover:bg-white/90 transition shadow-sm" onclick="enableHourPayEdit()">
         <span class="font-black text-lg">₹</span>
         <span id="hourPayDisplay" class="font-black text-lg">120</span>
-        <input type="text" id="hourPayEditInput" class="hidden font-black text-lg bg-transparent w-24 focus:outline-none" onblur="disableHourPayEdit()">
+        <input type="text" id="hourPayEditInput" class="hidden font-black text-lg bg-transparent w-20 focus:outline-none" onblur="disableHourPayEdit()">
       </div>
+      <button id="signOutBtn" class="text-xs font-bold bg-white/60 backdrop-blur-sm border border-finBorder px-3 py-1.5 rounded-full text-finMuted hover:text-finDanger transition shadow-sm">Sign Out</button>
     </div>
 
+    <!-- Main Entry Creator Block -->
     <form id="entryForm" class="grid grid-cols-4 gap-3 bg-transparent">
       <div class="col-span-3 space-y-3">
         <div>
@@ -72,108 +82,401 @@
           <input type="time" id="outTime" required class="w-2/3 border-2 border-finBorder rounded-md p-2 font-bold text-sm bg-finSurface backdrop-blur-md text-center focus:bg-white transition">
         </div>
       </div>
+
       <div class="col-span-1 flex">
-        <button type="submit" class="w-full border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white rounded-xl flex flex-col items-center justify-center font-black text-lg tracking-widest gap-2 py-4 transition shadow-md active:scale-[0.97]">
+        <button type="submit" id="saveBtn" class="w-full border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white rounded-xl flex flex-col items-center justify-center font-black text-lg tracking-widest gap-2 py-4 transition shadow-md active:scale-[0.97]">
           <span>S</span><span>A</span><span>V</span><span>E</span>
         </button>
       </div>
-      <button type="button" onclick="markAbsent()" class="col-span-4 mt-2 border-2 border-dashed border-finDanger text-finDanger bg-white/50 hover:bg-red-100 rounded-lg font-bold text-sm py-2 transition">
-        Mark as Absent
-      </button>
     </form>
 
+    <!-- Calculated Total Output Box -->
     <div class="flex items-center justify-between gap-4 pt-2">
       <label class="font-black text-lg tracking-wide bg-finSurface backdrop-blur-sm px-3 py-1.5 rounded-lg border border-emerald-200 shadow-sm">Total Earnings</label>
-      <div class="w-2/3 border-2 border-finBorder bg-finSurface backdrop-blur-md rounded-lg p-3 font-black text-xl text-center min-h-[52px] shadow-md" id="calculatedTotalDisplay">₹0</div>
+      <div class="w-2/3 border-2 border-finBorder bg-finSurface backdrop-blur-md rounded-lg p-3 font-black text-xl text-center min-h-[52px] shadow-md" id="calculatedTotalDisplay">
+        ₹0
+      </div>
     </div>
 
+    <!-- Divider Header Component -->
     <div class="flex justify-between items-center pt-4 border-t-2 border-finBorder">
       <h2 class="font-black text-lg tracking-wide bg-finSurface backdrop-blur-sm px-3 py-1 rounded-lg border border-emerald-200 shadow-sm">All entries</h2>
-      <button id="downloadBtn" class="border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white font-bold text-sm py-1.5 px-6 rounded-md transition shadow-sm">Download</button>
+      <div class="flex gap-2">
+        <button id="importBtn" class="border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white font-bold text-sm py-1.5 px-4 rounded-md transition shadow-sm">
+          Import
+        </button>
+        <input type="file" id="importFileInput" accept=".json" class="hidden">
+        <button id="downloadBtn" class="border-2 border-finBorder bg-finSurface backdrop-blur-md hover:bg-white font-bold text-sm py-1.5 px-6 rounded-md transition shadow-sm">
+          Download
+        </button>
+      </div>
     </div>
 
+    <!-- Dynamic Entry Logs Wrapper -->
     <div id="logsContainer" class="space-y-3"></div>
-    <div id="emptyState" class="text-center py-6 bg-finSurface backdrop-blur-sm rounded-xl border-2 border-dashed border-finBorder font-bold text-sm hidden">No log entries found.</div>
-
-    <div class="text-center pt-4">
-      <button id="createNewBtn" class="text-xs font-bold bg-white/60 backdrop-blur-sm border border-finBorder px-3 py-1 rounded-full text-finMuted hover:text-finDanger transition shadow-sm">Wipe & Reset Application</button>
+    <div id="emptyState" class="text-center py-6 bg-finSurface backdrop-blur-sm rounded-xl border-2 border-dashed border-finBorder font-bold text-sm hidden">
+      No log entries found.
     </div>
+    <div id="loadingState" class="text-center py-6 bg-finSurface backdrop-blur-sm rounded-xl border-2 border-dashed border-finBorder font-bold text-sm hidden">
+      Loading...
+    </div>
+
   </div>
 
   <script>
-    let appData = { hourPay: 120, entries: [] };
-    const initialScreen = document.getElementById('initialScreen'), mainApp = document.getElementById('mainApp'), initPayInput = document.getElementById('initPayInput'), startFreshBtn = document.getElementById('startFreshBtn'), fileInput = document.getElementById('fileInput'), hourPayDisplay = document.getElementById('hourPayDisplay'), hourPayEditInput = document.getElementById('hourPayEditInput'), entryForm = document.getElementById('entryForm'), entryDate = document.getElementById('entryDate'), inTime = document.getElementById('inTime'), outTime = document.getElementById('outTime'), calculatedTotalDisplay = document.getElementById('calculatedTotalDisplay'), logsContainer = document.getElementById('logsContainer'), emptyState = document.getElementById('emptyState'), downloadBtn = document.getElementById('downloadBtn'), createNewBtn = document.getElementById('createNewBtn');
+    // ---- Supabase setup ----
+    const SUPABASE_URL = "https://eovgstqettgzadwmcgly.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvdmdzdHFldHRnemFkd21jZ2x5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNDExMTMsImV4cCI6MjA5OTYxNzExM30.eskd8hemPCgPKRRfwDK0K94NSoeP19p6H1D-2bD89wc";
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    function formatIndianCurrency(numStr) {
-      let clean = numStr.replace(/[^0-9.]/g, '');
-      let parts = clean.split('.');
-      if (parts.length > 2) { clean = parts[0] + '.' + parts.slice(1).join(''); parts = clean.split('.'); }
-      let wholeNumber = parts[0], decimalPart = parts[1] !== undefined ? '.' + parts[1] : '';
-      if (!wholeNumber) return decimalPart ? '0' + decimalPart : '';
-      let lastThree = wholeNumber.substring(wholeNumber.length - 3), otherBits = wholeNumber.substring(0, wholeNumber.length - 3);
-      if (otherBits != '') lastThree = ',' + lastThree;
-      return otherBits.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree + decimalPart;
+    let appState = { hourPay: 120, entries: [] };
+    let currentUser = null;
+    let authMode = 'signin'; // or 'signup'
+
+    // ---- DOM refs ----
+    const authScreen = document.getElementById('authScreen');
+    const authTitle = document.getElementById('authTitle');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authError = document.getElementById('authError');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const authToggleBtn = document.getElementById('authToggleBtn');
+
+    const mainApp = document.getElementById('mainApp');
+    const hourPayDisplay = document.getElementById('hourPayDisplay');
+    const hourPayEditInput = document.getElementById('hourPayEditInput');
+    const signOutBtn = document.getElementById('signOutBtn');
+
+    const entryForm = document.getElementById('entryForm');
+    const entryDate = document.getElementById('entryDate');
+    const inTime = document.getElementById('inTime');
+    const outTime = document.getElementById('outTime');
+    const saveBtn = document.getElementById('saveBtn');
+
+    const calculatedTotalDisplay = document.getElementById('calculatedTotalDisplay');
+    const logsContainer = document.getElementById('logsContainer');
+    const emptyState = document.getElementById('emptyState');
+    const loadingState = document.getElementById('loadingState');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importFileInput = document.getElementById('importFileInput');
+
+    function t12(time24) {
+      if (!time24) return '';
+      let [hrs, mins] = time24.split(':');
+      hrs = parseInt(hrs);
+      let ampm = hrs >= 12 ? 'PM' : 'AM';
+      hrs = hrs % 12 || 12;
+      return `${hrs}:${mins} ${ampm}`;
     }
 
-    function parseFormattedNumber(str) { return parseFloat(str.replace(/,/g, '')) || 0; }
-    function t12(time24) { if (!time24) return ''; let [hrs, mins] = time24.split(':'); hrs = parseInt(hrs); let ampm = hrs >= 12 ? 'PM' : 'AM'; hrs = hrs % 12 || 12; return `${hrs}:${mins} ${ampm}`; }
-    function applyInputDefaults() { const today = new Date(); entryDate.value = today.toISOString().split('T')[0]; inTime.value = "08:30"; outTime.value = "19:00"; }
-    [initPayInput, hourPayEditInput].forEach(el => { el.addEventListener('input', (e) => { let cursor = e.target.selectionStart, oldLen = e.target.value.length; e.target.value = formatIndianCurrency(e.target.value); e.target.setSelectionRange(cursor + (e.target.value.length - oldLen), cursor + (e.target.value.length - oldLen)); }); });
+    function applyInputDefaults() {
+      const today = new Date();
+      entryDate.value = today.toISOString().split('T')[0];
+      inTime.value = "08:30";
+      outTime.value = "19:00";
+    }
 
-    function init() { const stored = localStorage.getItem('hourlyWorkTrackerData'); if (stored) { appData = JSON.parse(stored); if (!appData.hourPay) appData.hourPay = 120; showMainUi(); } else { showInitialUi(); } }
-    function saveToStorage() { localStorage.setItem('hourlyWorkTrackerData', JSON.stringify(appData)); }
-    function showInitialUi() { initialScreen.classList.remove('hidden'); mainApp.classList.add('hidden'); }
-    function showMainUi() { initialScreen.classList.add('hidden'); mainApp.classList.remove('hidden'); applyInputDefaults(); render(); }
-    window.enableHourPayEdit = function() { hourPayDisplay.classList.add('hidden'); hourPayEditInput.classList.remove('hidden'); hourPayEditInput.value = appData.hourPay.toString(); hourPayEditInput.focus(); };
-    window.disableHourPayEdit = function() { const parsedVal = parseFormattedNumber(hourPayEditInput.value); if (parsedVal > 0) { appData.hourPay = parsedVal; saveToStorage(); } hourPayEditInput.classList.add('hidden'); hourPayDisplay.classList.remove('hidden'); render(); };
-    hourPayEditInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') hourPayEditInput.blur(); });
-    startFreshBtn.addEventListener('click', () => { const p = parseFormattedNumber(initPayInput.value); if (p > 0) { appData.hourPay = p; appData.entries = []; saveToStorage(); showMainUi(); } });
-    
-    fileInput.addEventListener('change', (e) => {
+    function calculateEarnings(date, start, end) {
+      const startTime = new Date(`${date}T${start}`);
+      let endTime = new Date(`${date}T${end}`);
+      if (endTime < startTime) {
+        endTime.setDate(endTime.getDate() + 1);
+      }
+      let hours = (endTime - startTime) / (1000 * 60 * 60);
+      hours = hours - 0.5; // 30 min break deducted
+      return Math.max(0, hours * appState.hourPay);
+    }
+
+    // ---- Auth flow ----
+    authToggleBtn.addEventListener('click', () => {
+      authMode = authMode === 'signin' ? 'signup' : 'signin';
+      authTitle.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+      authSubmitBtn.textContent = authMode === 'signin' ? 'Sign In' : 'Sign Up';
+      authToggleBtn.textContent = authMode === 'signin' ? 'Need an account? Sign up instead' : 'Already have an account? Sign in';
+      authError.classList.add('hidden');
+    });
+
+    authSubmitBtn.addEventListener('click', async () => {
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+      authError.classList.add('hidden');
+
+      if (!email || !password) {
+        authError.textContent = "Enter both email and password.";
+        authError.classList.remove('hidden');
+        return;
+      }
+
+      authSubmitBtn.disabled = true;
+      authSubmitBtn.textContent = "Please wait...";
+
+      let result;
+      if (authMode === 'signin') {
+        result = await sb.auth.signInWithPassword({ email, password });
+      } else {
+        result = await sb.auth.signUp({ email, password });
+      }
+
+      authSubmitBtn.disabled = false;
+      authSubmitBtn.textContent = authMode === 'signin' ? 'Sign In' : 'Sign Up';
+
+      if (result.error) {
+        authError.textContent = result.error.message;
+        authError.classList.remove('hidden');
+        return;
+      }
+
+      if (authMode === 'signup' && !result.data.session) {
+        authError.textContent = "Check your email to confirm your account, then sign in.";
+        authError.classList.remove('hidden');
+        return;
+      }
+
+      await handleSignedIn(result.data.session.user);
+    });
+
+    signOutBtn.addEventListener('click', async () => {
+      await sb.auth.signOut();
+      currentUser = null;
+      appState = { hourPay: 120, entries: [] };
+      mainApp.classList.add('hidden');
+      authScreen.classList.remove('hidden');
+      authEmail.value = '';
+      authPassword.value = '';
+    });
+
+    async function handleSignedIn(user) {
+      currentUser = user;
+      authScreen.classList.add('hidden');
+      mainApp.classList.remove('hidden');
+      applyInputDefaults();
+      await loadProfile();
+      await loadEntries();
+    }
+
+    // ---- Profile (hour pay) ----
+    async function loadProfile() {
+      const { data, error } = await sb.from('profiles').select('hour_pay').eq('id', currentUser.id).single();
+      if (data) {
+        appState.hourPay = data.hour_pay;
+      } else {
+        // no profile row yet, create one with default
+        await sb.from('profiles').insert({ id: currentUser.id, hour_pay: 120 });
+        appState.hourPay = 120;
+      }
+      hourPayDisplay.textContent = appState.hourPay.toLocaleString('en-IN');
+    }
+
+    window.enableHourPayEdit = function() {
+      hourPayDisplay.classList.add('hidden');
+      hourPayEditInput.classList.remove('hidden');
+      hourPayEditInput.value = appState.hourPay;
+      hourPayEditInput.focus();
+    };
+
+    window.disableHourPayEdit = async function() {
+      const parsedVal = parseFloat(hourPayEditInput.value.replace(/,/g, '')) || 0;
+      if (parsedVal > 0) {
+        appState.hourPay = parsedVal;
+        await sb.from('profiles').update({ hour_pay: parsedVal }).eq('id', currentUser.id);
+      }
+      hourPayEditInput.classList.add('hidden');
+      hourPayDisplay.classList.remove('hidden');
+      hourPayDisplay.textContent = appState.hourPay.toLocaleString('en-IN');
+      renderTotal();
+    };
+
+    hourPayEditInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') hourPayEditInput.blur();
+    });
+
+    // ---- Entries ----
+    async function loadEntries() {
+      loadingState.classList.remove('hidden');
+      emptyState.classList.add('hidden');
+      logsContainer.innerHTML = '';
+
+      const { data, error } = await sb
+        .from('entries')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('raw_date', { ascending: false });
+
+      loadingState.classList.add('hidden');
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      appState.entries = data || [];
+      renderEntries();
+    }
+
+    entryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      saveBtn.disabled = true;
+
+      const earnings = Math.round(calculateEarnings(entryDate.value, inTime.value, outTime.value));
+
+      const { data, error } = await sb.from('entries').insert({
+        user_id: currentUser.id,
+        raw_date: entryDate.value,
+        in_time: inTime.value,
+        out_time: outTime.value,
+        earnings: earnings
+      }).select().single();
+
+      saveBtn.disabled = false;
+
+      if (error) {
+        alert("Could not save entry: " + error.message);
+        return;
+      }
+
+      appState.entries.unshift(data);
+      renderEntries();
+      entryForm.reset();
+      applyInputDefaults();
+    });
+
+    window.deleteEntry = async function(id) {
+      const { error } = await sb.from('entries').delete().eq('id', id);
+      if (error) {
+        alert("Could not delete entry: " + error.message);
+        return;
+      }
+      appState.entries = appState.entries.filter(ent => ent.id !== id);
+      renderEntries();
+    };
+
+    downloadBtn.addEventListener('click', () => {
+      const exportObj = { hourPay: appState.hourPay, entries: appState.entries };
+      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `work_tracker_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    importBtn.addEventListener('click', () => {
+      importFileInput.click();
+    });
+
+    importFileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
       const reader = new FileReader();
-      reader.onload = function(event) {
+      reader.onload = async (event) => {
+        let parsed;
         try {
-          const parsed = JSON.parse(event.target.result);
-          if (parsed && typeof parsed.hourPay === 'number' && Array.isArray(parsed.entries)) {
-            appData = parsed;
-            saveToStorage();
-            showMainUi();
-          } else { alert("File content invalid."); }
-        } catch (err) { alert("File read error."); }
-        fileInput.value = ''; // Reset input to allow re-selection
+          parsed = JSON.parse(event.target.result);
+        } catch (err) {
+          alert("That file isn't valid JSON.");
+          return;
+        }
+
+        if (!Array.isArray(parsed.entries)) {
+          alert("This file doesn't look like a work tracker export.");
+          return;
+        }
+
+        // Support both the old localStorage export shape (rawDate/inTime/outTime)
+        // and the current Supabase export shape (raw_date/in_time/out_time).
+        const rowsToInsert = parsed.entries.map(ent => ({
+          user_id: currentUser.id,
+          raw_date: ent.raw_date || ent.rawDate,
+          in_time: ent.in_time || ent.inTime,
+          out_time: ent.out_time || ent.outTime,
+          earnings: ent.earnings
+        })).filter(r => r.raw_date && r.in_time && r.out_time);
+
+        if (rowsToInsert.length === 0) {
+          alert("No valid entries found in that file.");
+          return;
+        }
+
+        importBtn.disabled = true;
+        importBtn.textContent = "Importing...";
+
+        const { data, error } = await sb.from('entries').insert(rowsToInsert).select();
+
+        importBtn.disabled = false;
+        importBtn.textContent = "Import";
+        importFileInput.value = '';
+
+        if (error) {
+          alert("Import failed: " + error.message);
+          return;
+        }
+
+        if (typeof parsed.hourPay === 'number' && parsed.hourPay > 0) {
+          const useImportedPay = confirm(`Also set hour pay to ₹${parsed.hourPay} from this file?`);
+          if (useImportedPay) {
+            appState.hourPay = parsed.hourPay;
+            await sb.from('profiles').update({ hour_pay: parsed.hourPay }).eq('id', currentUser.id);
+            hourPayDisplay.textContent = appState.hourPay.toLocaleString('en-IN');
+          }
+        }
+
+        appState.entries = [...data, ...appState.entries].sort((a, b) => b.raw_date.localeCompare(a.raw_date));
+        renderEntries();
+        alert(`Imported ${data.length} entr${data.length === 1 ? 'y' : 'ies'}.`);
       };
       reader.readAsText(file);
     });
 
-    function calculateEarnings(date, start, end) { const startTime = new Date(`${date}T${start}`); let endTime = new Date(`${date}T${end}`); if (endTime < startTime) endTime.setDate(endTime.getDate() + 1); let hours = (endTime - startTime) / (1000 * 60 * 60); hours = hours - 0.5; return Math.max(0, hours * appData.hourPay); }
-    entryForm.addEventListener('submit', (e) => { e.preventDefault(); const earnings = calculateEarnings(entryDate.value, inTime.value, outTime.value); const dObj = new Date(entryDate.value); const newLog = { id: crypto.randomUUID(), displayDate: `${String(dObj.getDate()).padStart(2, '0')}/${String(dObj.getMonth() + 1).padStart(2, '0')}/${dObj.getFullYear()}`, rawDate: entryDate.value, inTime: inTime.value, outTime: outTime.value, earnings: Math.round(earnings) }; appData.entries.unshift(newLog); saveToStorage(); entryForm.reset(); applyInputDefaults(); render(); });
-    window.markAbsent = function() { const newLog = { id: crypto.randomUUID(), displayDate: entryDate.value.split('-').reverse().join('/'), isAbsent: true, earnings: 0 }; appData.entries.unshift(newLog); saveToStorage(); render(); };
-    window.deleteEntry = function(id) { appData.entries = appData.entries.filter(ent => ent.id !== id); saveToStorage(); render(); };
-    downloadBtn.addEventListener('click', () => { const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `work_tracker_export_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); });
-    createNewBtn.addEventListener('click', () => { if (confirm("Download structural backup before data wipe sequence?")) downloadBtn.click(); localStorage.removeItem('hourlyWorkTrackerData'); showInitialUi(); });
-    function render() {
-      hourPayDisplay.textContent = appData.hourPay.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-      const totalSum = appData.entries.reduce((sum, ent) => sum + ent.earnings, 0);
+    function displayDateFor(rawDate) {
+      const [y, m, d] = rawDate.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function renderTotal() {
+      const totalSum = appState.entries.reduce((sum, ent) => sum + ent.earnings, 0);
       calculatedTotalDisplay.textContent = `₹${totalSum.toLocaleString('en-IN')}`;
+    }
+
+    function renderEntries() {
+      renderTotal();
       logsContainer.innerHTML = '';
-      if (appData.entries.length === 0) { emptyState.classList.remove('hidden'); return; }
+
+      if (appState.entries.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
       emptyState.classList.add('hidden');
-      appData.entries.forEach(ent => {
+
+      appState.entries.forEach(ent => {
         const itemRow = document.createElement('div');
         itemRow.className = "border-2 border-finBorder bg-finSurface backdrop-blur-md rounded-xl p-3 flex justify-between items-center gap-4 transition shadow-md hover:bg-white";
         itemRow.innerHTML = `
           <div class="flex flex-col gap-0.5">
-            <span class="font-black text-sm text-finText tracking-wide">${ent.displayDate}</span>
-            <span class="text-xs font-bold text-finMuted">${ent.isAbsent ? 'ABSENT' : t12(ent.inTime) + ' to ' + t12(ent.outTime) + ' (Break deducted)'}</span>
+            <span class="font-black text-sm text-finText tracking-wide">${displayDateFor(ent.raw_date)}</span>
+            <span class="text-xs font-bold text-finMuted">${t12(ent.in_time)} to ${t12(ent.out_time)} (Break deducted)</span>
           </div>
           <div class="flex items-center gap-4">
-            <span class="font-black text-base ${ent.isAbsent ? 'text-finDanger' : 'text-finText'}">${ent.isAbsent ? 'Absent' : '₹' + ent.earnings.toLocaleString('en-IN')}</span>
-            <button onclick="deleteEntry('${ent.id}')" class="border-2 border-finBorder bg-white hover:bg-red-50 text-finDanger font-black text-xs py-1 px-3 rounded-md transition tracking-wider">Delete</button>
-          </div>`;
+            <span class="font-black text-base text-finText">₹${ent.earnings.toLocaleString('en-IN')}</span>
+            <button onclick="deleteEntry('${ent.id}')" class="border-2 border-finBorder bg-white hover:bg-red-50 text-finDanger font-black text-xs py-1 px-3 rounded-md transition tracking-wider">
+              Delete
+            </button>
+          </div>
+        `;
         logsContainer.appendChild(itemRow);
       });
+    }
+
+    // ---- Boot ----
+    async function init() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        await handleSignedIn(session.user);
+      }
     }
     init();
   </script>
